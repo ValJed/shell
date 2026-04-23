@@ -1,6 +1,6 @@
 use commands::Command as Cmd;
-use std::process::{self, Command};
-use utils::{get_user_input, print_error};
+use std::process::{self};
+use utils::{check_if_builtin, get_user_input, parse_cmd, print_error};
 
 mod commands;
 mod utils;
@@ -14,14 +14,16 @@ fn main() {
         }
 
         let input = input_res.unwrap();
-        match Cmd::from(input) {
+        let (command, arguments) = parse_cmd(input);
+        match Cmd::from((command, arguments)) {
+            Cmd::NotFound(cmd) => print_error(cmd),
             Cmd::Exit => {
                 process::exit(1);
             }
-            Cmd::NotFound(cmd) => print_error(cmd),
-            Cmd::Echo(cmd) => {}
+            Cmd::Echo(args) => {
+                println!("{:?}", args);
+            }
+            Cmd::Type(args) => check_if_builtin(args),
         }
-
-        // print_error(cmd);
     }
 }
