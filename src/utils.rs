@@ -1,5 +1,11 @@
 use crate::commands::Command;
-use std::io::{Write, stdin, stdout};
+use std::fs::{self, Metadata};
+use std::os::unix::fs::PermissionsExt;
+use std::path::PathBuf;
+use std::{
+    env,
+    io::{Write, stdin, stdout},
+};
 
 pub fn print_error(input: String) {
     eprintln!("{:?}: command not found", input)
@@ -28,16 +34,66 @@ pub fn parse_cmd(input: String) -> (String, Vec<String>) {
     }
 }
 
-pub fn check_if_builtin(args: Vec<String>) {
+pub fn check_type(args: Vec<String>) {
     for arg in args {
         let to_print = match Command::from((arg.clone(), vec![])) {
-            Command::NotFound(_) => {
-                format!("{}: not found", arg)
-            }
+            Command::NotFound(cmd) => match search_path_bin(cmd) {
+                Some(path) => {
+                    format!("{} is {:?}", arg, path)
+                }
+                None => {
+                    format!("{}: not found", arg)
+                }
+            },
             _ => {
                 format!("{} is a shell builtin", arg)
             }
         };
         println!("{to_print}");
+    }
+}
+
+pub fn search_path_bin(cmd: String) -> Option<PathBuf> {
+    match env::var("PATH") {
+        Ok(val) => {
+            let path = val.split(":").find(|p| {
+                let dir = fs::read_dir(p);
+                if dir.is_err() {
+                    return false;
+                }
+                for file_res in dir.unwrap() {
+                    let Ok(file) = file_res else {
+                        continue;
+                    };
+                    let name = file.file_name().to_owned();
+                    if name != cmd.as_str() {
+                        continue;
+                    }
+                    match file.metadata() {
+                        Ok(metadata) => return check_file_execute_permission(metadata),
+                        Err(_) => {}
+                    };
+                }
+
+                return false;
+            })?;
+
+            Some(PathBuf::from(format!("{path}/{cmd}")))
+        }
+        Err(_) => None,
+    }
+}
+
+fn check_file_execute_permission(metadata: Metadata) -> bool {
+    let mode = metadata.permissions().mode();
+
+    let owner_exec = mode & 0o100 != 0; // user/owner can execute
+    let group_exec = mode & 0o010 != 0; // group can execute
+    let others_exec = mode & 0o001 != 0; // others can execute
+    //
+    if owner_exec || group_exec || others_exec {
+        return true;
+    } else {
+        return false;
     }
 }

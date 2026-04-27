@@ -1,6 +1,9 @@
 use commands::Command as Cmd;
-use std::process::{self};
-use utils::{check_if_builtin, get_user_input, parse_cmd, print_error};
+use std::{
+    io::{self, Write},
+    process::{self},
+};
+use utils::{check_type, get_user_input, parse_cmd, print_error};
 
 mod commands;
 mod utils;
@@ -21,9 +24,9 @@ fn main() {
                 process::exit(1);
             }
             Cmd::Echo(args) => {
-                println!("{:?}", args);
+                print!("{:?}", args);
             }
-            Cmd::Type(args) => check_if_builtin(args),
+            Cmd::Type(args) => check_type(args),
         }
     }
 }

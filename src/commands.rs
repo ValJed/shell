@@ -12,7 +12,7 @@ impl From<(String, Vec<String>)> for Command {
             "exit" => Command::Exit,
             "echo" => Command::Echo(args),
             "type" => Command::Type(args),
-            _ => Command::NotFound(cmd.to_string()),
+            _ => Command::NotFound(cmd),
         }
     }
 }
